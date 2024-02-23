@@ -1,0 +1,750 @@
+---
+title: |
+  <div style="text-align: center;"><strong>MODELO DE REGRESIÓN LINEAL</strong></div>
+subtitle: |
+  <div style="text-align: center;"><strong>Ejercicio N°3</strong></div>
+author: |
+  <div style="text-align: center;"><strong>Juan David Raigoso Espinosa</strong></div>
+date: |
+  <div style="text-align: center;"><strong>2023-09-19</strong></div>
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float:
+      collapsed: yes
+---
+-- https://rpubs.com/juan_raigoso/1098830 Enlace del proyecto--
+
+```{r, message=FALSE}
+# Librerías a utilizar
+library(devtools)
+library(paqueteMET)
+library(stargazer)
+library(tidyverse)
+library(moments)
+library(kableExtra)
+library(knitr)
+library(nortest)
+library(ggpubr)
+library(car)
+library(MASS)
+library(ggfortify)
+library(modeest)
+library(knitr)
+data(vivienda4)
+
+#Se filtrar la base de datos vivienda4 por apartamento, ya que está contiene datos de casas.
+vivienda4 <- filter(vivienda4, tipo=='Apartamento')
+```
+
+::: text-justify
+Realice un análisis exploratorio de las variables precio de vivienda (millones de pesos COP) y área de la vivienda (metros cuadrados) - incluir gráficos e indicadores apropiados interpretados
+
+
+# Análisis exploratorio.
+
+
+En este apartado se pretende realizar un análisis exploratorio de las variables **Precio**  y **Área construida**, en el cual se realizan diversos gráficos e indicadores para observar el comportamiento y la distribución de cada variable.
+
+
+###  Variable Precio.
+
+Con respecto a la variable precio, en el histograma se evidencia que hay una gran concentración de los precios de las viviendas hacia la izquierda del grafico; reflejando que hay muchos apartamentos con precios bajos.
+
+```{r}
+grafico_1<-ggplot(data=vivienda4)+
+  geom_histogram(aes(x=preciom),binwidth = 10,fill = "#4D6291", color = "black")+
+  theme(axis.text.x = element_text(size = 10))+
+  labs(title = "Histograma variable Precio", x = "Precio (millones de pesos COP)", y = "Frecuencia")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+<div style="text-align:center">
+```{r, echo=FALSE}
+grafico_1
+```
+</div>
+
+En relación con los cuartiles, encontramos que el 25% de los apartamentos tienen un precio menor o igual a 153.5 millones de pesos, el 50% de los apartamentos tiene un precio menor o igual a 185 millones de pesos y por último el 75% tienen un valor menor que o igual a 240 millones de pesos.
+
+Esta representación de lo cuartiles se evidencia de una mejor forma en el siguiente gráfico, donde podemos afirmar lo anteriormente dicho y anexándole que hay una pequeña cantidad de apartamentos con altos precios (puntos rojos):
+
+```{r}
+grafico_2<-ggplot(data=vivienda4)+
+  geom_boxplot(aes(x=preciom), col= "blue", outlier.color = "red")+
+  labs(title = "Diagrama de cajas - Variable precio", x = "Precio (millones de pesos COP)", y="Porcentaje")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+<div style="text-align:center">
+```{r, echo=FALSE}
+grafico_2
+```
+</div>
+
+```{r}
+kable(data.frame(Cuartiles =quantile(vivienda4$preciom,
+                    prob=c(0.25,0.5,0.75))),caption= "Indicadores de posición",aling= "lcrr") %>%
+  kable_classic(full_width= F, html_font = "Cambria")
+```
+
+
+Podemos observar que la desviación de los precios varía por encima o por debajo de la media en 65.29 Millones de pesos. Por otro lado, el coeficiente de variación nos indica que el valor del precio de las viviendas fluctúa un bastante alrededor de la media (202.43 millones de pesos), siendo el CV de 32.25%, lo cual nos indica que los datos de los precios tienden hacer un poco heterogéneos (muy dispersos).
+
+En este caso la curtosis de 6.843 indica que la distribución de precios de viviendas es leptocúrtica, lo que implica colas más pesadas y la presencia de valores extremos en los precios de viviendas. Lo cual nos indica la presencia de valores atípicos, lo que ocasiona que no hay haya una distribución uniforme. Por último, el precio que más se repite dentro del valor de los apartamentos de estrato 4 es 150 millones.
+
+```{r}
+promedio_precio<-mean(vivienda4$preciom)
+sd_precio <- sd(vivienda4$preciom)
+
+kable(
+table(Moda=mfv(vivienda4$preciom), Varianza= var(vivienda4$preciom), Desviación_estandar=sd(vivienda4$preciom), Coeficiente_variacion=(sd_precio / promedio_precio)*100, kurtosis(vivienda4$preciom)), 
+caption= "Indicadores de posición, forma, centro y variabilidad",
+      aling= "c", col.names = c("Moda", "Varianza", "Desviación estandar", "coeficiente de variación", "kurtosis", "Freq")) %>%
+  kable_classic(full_width= F, html_font = "Cambria")%>%
+  kable_styling(position = "center")
+```
+
+###  Variable Área construida
+
+Con relación a la variable Área Construida, podemos ver en el histograma que el comportamiento de la cantidad de apartamentos en m² tiende a concentrarse en viviendas pequeñas, se observa una cierta inclinación de los datos a lado izquierdo del gráfico, lo cual nos da a entender que los apartamentos no muy grandes son los más apetecidos.
+
+```{r}
+grafico_3<-ggplot(data=vivienda4)+
+  geom_histogram(aes(x=areaconst),binwidth = 10,fill = "#AE123A", color = "black")+
+  theme(axis.text.x = element_text(size = 10))+
+  labs(title = "Histograma variable Área construida", x = "Área m²", y = "Frecuencia")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+<div style="text-align:center">
+```{r,echo=FALSE}
+grafico_3
+```
+</div>
+
+También con el grafico de caja y los indicadores de posición (cuartiles) podemos observar cómo se concentran los datos de apartamento en relación con el área construida, si bien hay apartamentos con áreas construidas muy grades (valores atípicos) que se pueden observar en gráfico, la mayoría de estos tienen un área construida igual o menor a 84 m², pues el 75% de los apartamentos tienen dicho tamaño. Por otro lado, el 25% cuentan con un área construida igual o menor a 60 m². Por el lado de la mediana nos indica que el 50% de los apartamentos cuentan con un área construida menor o igual a 70 m².
+
+```{r}
+grafico_4<-ggplot(data=vivienda4)+
+  geom_boxplot(aes(x=areaconst), col= "#35832D", outlier.color = "#270B3A")+
+  labs(title = "Diagrama de cajas - Variable Área construida", x = "Área m²", y="Porcentaje")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+<div style="text-align:center">
+```{r,echo=FALSE}
+grafico_4
+```
+</div>
+
+
+```{r}
+kable(data.frame(Cuartiles =quantile(vivienda4$areaconst,
+                    prob=c(0.25,0.5,0.75))),caption= "Indicadores de posición",aling= "lcrr") %>%
+  kable_classic(full_width= F, html_font = "Cambria")
+```
+
+Por otra parte, al analizar el promedio del área construida de las viviendas de estrato 4 notamos que en promedio los apartamentos tienen un área construida de 75.47 m². También, la desviación estándar de 22.56 metros cuadrados mide cuán dispersos o variados son los tamaños de las viviendas con respecto a la media. En este caso, una desviación estándar de 22.56 metros cuadrados es relativamente grande en comparación con la media de 75.47 metros cuadrados.
+
+Asimismo, el tamaño que más se repite 60 m2 pues el 12.84% de los apartamentos tiene este tamaño. Por el lado del coeficiente de variación del 29.89% sugiere que los valores de "área construida" tienden a variar relativamente en comparación con la media. En otras palabras, los valores individuales de "área construida" pueden estar bastante dispersos en relación con el valor promedio.
+
+```{r}
+promedio_area<-mean(vivienda4$areaconst)
+sd_area <- sd(vivienda4$areaconst)
+
+
+kable(
+table(Moda=mfv(vivienda4$areaconst),Desviación_estandar=sd(vivienda4$areaconst), promedio=mean(vivienda4$areaconst),
+      mediana=median(vivienda4$areaconst), coeficiente_variación=(sd_area/promedio_area)*100, kurtosis(vivienda4$areaconst)
+      ), 
+caption= "Indicadores de posición, forma, centro y variabilidad",
+col.names = c("Moda","Desviación estandar", "Promedio", "Mediana", "Coeficiente de variación","Kurtosis", "Freq")) %>%
+  kable_classic(full_width= F, html_font = "Cambria")%>%
+  kable_styling(position = "center")
+```
+
+Lo anteriormente dicho lo podemos comprobar con el siguiente histograma, en el cual se plasma los indicadores de media, mediana y desviación estándar. Donde podemos apreciar que los datos están un poco dispersos con respeto a la media, asimismo, corroboramos esto con el indicador kurtosis (9.33). Esto indica que la distribución de la variable área construida tienden a concentrarse en áreas pequeñas, muy alejadas de las colas. Es decir, la distribución de metros cuadrados de viviendas es leptocúrtica.
+
+
+```{r}
+promedio_area <- mean(vivienda4$areaconst)
+mediana_area <- median(vivienda4$areaconst)
+sd_area <- sd(vivienda4$areaconst)
+grafico_5<-ggplot(data=vivienda4)+
+  geom_histogram(aes(x=areaconst),binwidth = 10,fill = "#35274A", color = "black")+
+  theme(axis.text.x = element_text(size = 10))+
+  labs(title = "Histograma variable Área construida", x = "Área m²", y = "Frecuencia",
+       subtitle = 'Indicadores de centro y forma')+
+  geom_vline(aes(xintercept = promedio_area, color = "Media"), linetype  = "dashed", linewidth = 1) +
+  geom_vline(aes(xintercept = mediana_area, color = "Mediana"), linetype = "dashed", linewidth = 1) +
+  geom_vline(aes(xintercept = promedio_area + sd_area, color = "Desviación Estándar"), linetype      = "dashed", linewidth = 1)+
+  scale_color_manual(values = c("Media" = "#F2300F", "Mediana" = "#0B775E", "Desviación Estándar" = "blue")) +
+  theme(legend.title = element_blank())+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+<div style="text-align:center">
+```{r,echo=FALSE}
+grafico_5
+```
+</div>
+
+# Análisis bivariado
+
+En este apartado se realiza un análisis bivariado con el fin de comprender como se comportan las dos variables (Precio y Área construida) conjuntamente.
+
+```{r}
+grafico_6 <- ggplot(data = vivienda4) +
+  geom_point(mapping = aes(x = areaconst, y = preciom), color = "#FF6B58") +
+  geom_smooth(mapping = aes(x = areaconst, y = preciom), method = "lm", se = FALSE, color = "#112630") +
+  labs(title = "Gráfico de dispersión Precio - Área construida", x = "Área construida en m²", y = "Precio") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+El gráfico muestra que, en general, las viviendas más caras son las que tienen un área construida mayor. Sin embargo, hay algunas excepciones a esta tendencia, ya que hay viviendas con un área construida mayor que son más baratas que otras viviendas con un área construida menor.
+
+El gráfico muestra una tendencia positiva entre las dos variables, lo que significa que, en general, las viviendas más caras son las que tienen un área construida mayor. Sin embargo, hay algunas excepciones a esta tendencia, ya que hay viviendas con un área construida mayor que son más baratas que otras viviendas con un área construida menor.
+
+
+<div style="text-align:center">
+```{r,echo=FALSE}
+options(warn = -1) 
+grafico_6
+```
+</div>
+
+Sin embargo, existe incertidumbre que el precio y el área construida de las viviendas de estrato 4 tengan claramente una relación lineal, ya que, en el gráfico anterior se percibe varios puntos muy dipersor, lo cual nos puede indicar que la relación no es lienal. Además, al realizarse el análisis exploratorio en los diagramas realizados para ambas variables observamos que los datos se mostraban bastantes dispersos frente a la media, lo cual nos indica que probablemente haya problemas de normalidad. Para esto, se realiza una serie de pruebas para corroborar la linealidad entre las dos variables. Antes de aplicar la correlación de Pearson, nos vamos a asegurar que estas variables cumplan los supuestos requeridos. Para el supuesto de normalidad aplicamos la prueba de Shapiro-Wilk.
+
+  - Prueba de shapiro-wilk.
+  
+  El test de Shapiro-Wilks plantea la hipótesis nula que una muestra proviene de una distribución normal
+  
+  Tenemos:
+  
+  $H_0:X \sim N(\mu, \sigma^2)$: La distribución es normal.
+  
+  $H_a:X \not\sim N(\mu, \sigma^2)$: La distribución no es normal.
+```{r}
+shapiro.test(vivienda4$areaconst)
+shapiro.test(vivienda4$preciom)
+```
+
+De acuerdo a esta prueba, en ambos casos el valor de probabilidad ***(p)*** es muy inferiores a nuestro nivel elegido (0,05), por lo que  ***rechazamos la hipótesis nula*** y aceptamos la hipótesis alternativa, por ende, la distribución de ambas variables no es normal.
+
+  - Prueba de  kolmogorv-Smirnov.
+  
+  Tenemos:
+  
+  $H_0$: La distribución es normal.
+  
+  $H_a$: La distribución no es normal.
+
+```{r}
+lillie.test(vivienda4$areaconst)
+lillie.test(vivienda4$preciom)
+```
+
+
+Igual que en la anterior prueba, en ambos casos el valor de probabilidad ***(p)*** es muy inferior a nuestro nivel elegido (0,05), por lo que  ***rechazamos la hipótesis nula*** y aceptamos la hipótesis alternativa, por ende, la distribución de ambas variables no es normal.
+
+Ahora, para concluir la normalidad de las variables aplicamos el gráfico normal (Q-Q), donde en ambos casos gran parte de los datos no se ajustan a la recta roja, lo cual nos da a entender que los datos de ambas variables no siguen una distribución normal. Al efectuar las dos pruebas (Shapiro Wilk & Kolmogorov Smirnov) para evaluar la normalidad llegamos a la conclusión de que las variables no siguen una distribución normal. Al violarse este supuesto más lo expuesto en el gráfico de dispersión (donde no se ve claramente una linealidad) se concluye que no es posible aplicar el coeficiente de correlación de Pearson, ya que este no nos diría el grado de asociación de estas dos variables, de tal forma aplicaremos el coeficiente no paramétrico de correlación de Spearman. Sin embargo, en este trabajo que es netamente académico también aplicamos la prueba de Pearson.
+
+
+```{r}
+par(mfrow = c(1, 2))
+qqnorm(vivienda4$preciom)
+qqline(vivienda4$preciom, col = 2)
+
+qqnorm(vivienda4$areaconst)
+qqline(vivienda4$areaconst, col = 2)
+```
+
+  - **Correlación Spearman**
+
+```{r}
+cor.test(vivienda4$preciom, vivienda4$areaconst, method = "spearman")
+```
+
+Al interpretar el coeficiente de Spearman, nos damos cuenta de que el valor es de .77 acercándose a 1, lo cual nos indicaría que hay una correlación positiva débil. Significa que a medida que una variable aumenta (precio), la otra (área construida) también lo hace de manera constante y monótona.
+
+
+
+ - **Correlación Pearson**
+ 
+```{r}
+cor.test(vivienda4$preciom, vivienda4$areaconst)
+```
+Al interpretar los resultados de la correlación de Pearson, vemos que el p-value < 2.2e-16, lo cual nos indica que la correlación observada es estadísticamente significativa. Asimismo, nos da una correlación de 0.74 indicándonos que hay asociación positiva débil entre la asociación de las variables precio y área construida.
+
+ 
+# Estimación modelo de regresión lineal.
+
+Estime el modelo de regresión lineal simple entre $precio=f(area)+ε$. Interprete los coeficientes del modelo $β_0$, $β_1$ en caso de ser correcto.
+
+
+Tenemos entonces el modelo de regresión lineal:
+
+$Y = β0 + β1X + ε$
+
+Donde:
+
+$X$, es la variable dependiente o de respuesta, en este caso Área construida en m2.
+
+$Y$, es la variable independiente o predictora, en este caso Precio.
+
+$β_0$, es el intercepto de la recta con el eje vertical. 
+
+$β_1$, se conoce como pendiente y determina la inclinación de la recta.
+
+$ε$ error, variable aleatoria desconocida y que representa todas aquellas variables que no están en el modelo.
+
+
+$β_0$ y $β_1$ conforman los parámetros a estimar con conforman la recta:
+
+ \[ y_i = \hat{\beta}_0 + \hat{\beta}_1 x_i\]
+
+
+```{r}
+modelo_RL<- lm(preciom ~ areaconst, data = vivienda4)
+summary(modelo_RL)
+```
+
+
+Al interpretar los coeficientes de $β_0$ y $β_1$, estos tienen valores de 39.04 y 2.16 respectivamente. Los cuales al reemplazarlos en la ecuación original tenemos que: $precio= 39.04 + 2.16 x$, esto nos quiere decir que: El intercepto $β_0$ es 39.04 cuando el área construida (X) es igual a cero metros cuadrados, el precio estimado es de 39.04 millones de pesos.
+
+El coeficiente de pendiente $β_1$ es 2.16. Esto indica que, en promedio, por cada metro cuadrado adicional de área construida en un apartamento de estrato 4, el precio estimado aumenta en 2.16 millones de pesos. En otras palabras, el precio de la vivienda aumenta en 2.16 millones de pesos por metro cuadrado adicional de área construida.
+
+
+# Intervalo de confianza.
+
+Construir un intervalo de confianza (95%) para el coeficiente $β1$ , interpretar y concluir si el coeficiente es igual a cero o no. Compare este resultado con una prueba de hipótesis t.
+
+
+```{r}
+confint(modelo_RL, level=0.95)
+```
+
+Para probar si $β1$ es significativamente distinto de cero:
+
+hipótesis
+
+$H_0: β1 = 0$
+
+$H_1: β1 \neq 0$
+
+En los anteriores resultados se puede observar:
+
+Para la intercepción $(β_0)$, podemos decir con un 95% de confianza que el valor real de la intercepción está entre 31.00423 y 47.089340. Esto representa el valor estimado del precio cuando el área construida es igual a cero.
+
+El intervalo de confianza para la pendiente $β_1$ se puede interpretar como: Por cada metro cuadrado adicional en las viviendas, el valor real del precio aumenta entre 2.06 millones de pesos y 2.26 millones de pesos.
+
+
+Al comparar estos resultados con la prueba de t, se rechaza la prueba ya que el valor de p-value es diferente a cero, por lo cual existe evidencia estadística de que el precio y el área construida están correlacionados y dicha correlación es significativa.
+
+
+# Indicador de bondad R2
+
+```{r}
+summary(modelo_RL)$r.squared
+```
+Al analizar el indicador de bondad de ajuste del modelo (R²), el cual nos indica la proporción de la variabilidad total en la variable precio que es explicada por el modelo de regresión. En este caso, el R² es del 0.5579 que indica que el 55.79% de la variabilidad de los precios en millones de pesos es explicada por el área construida incluida en el modelo. 
+
+Cabe mencionar que el 44.21% restante es explicado por otras variables no incluidas en el modelo. Ahora, en este caso, si bien se esta explicando el 55% de la variabilidad del precio se espera que teóricamente el R2 este por encima del 80%. 
+
+Teniendo en cuenta lo anterior, para determinar de forma estadística si el modelo es bueno o no, aplicaremos diversas pruebas estadísticas con apoyo de gráficos para la validación del cumplimiento de los supuestos del modelo.
+
+# Modelo estimado para un apartamento de 110 metros cuadrados.
+
+¿Cuál sería el precio promedio estimado para un apartamento de 110 metros cuadrados? ¿Considera entonces con este resultado que un apartamento en la misma zona con 110 metros cuadrados en un precio de 200 millones sería una atractiva esta oferta? ¿Qué consideraciones adicionales se deben tener?.
+
+
+```{r}
+predict(modelo_RL, data.frame(areaconst=110), interval = "confidence", level = 0.95)
+```
+
+El precio promedio esperado de oferta para una vivienda de 110 metros cuadrados es de 277.16 millones de pesos. Los intervalos de confianza para la predicción del precio nos indica que el promedio de un apartamento de 100 m2 estaría entre los 272.95 y 281,37 millones de pesos con un 95% de confianza. Por lo tanto, un apartamento de 110 metros cuadrados en la misma zona a un precio de 200 millones se consideraría una mala oferta, ya que está por debajo del precio promedio y por debajo de los intervalos de confianza.
+
+
+```{r}
+predict(modelo_RL, data.frame(areaconst=110), interval = "prediction", level = 0.95)
+```
+
+Con un nivel de confianza del 95%, estimamos que el precio de una propiedad con 110 metros cuadrados de área construida estará en el rango de aproximadamente 192.04 millones de pesos a 362.28 millones de pesos, con una estimación puntual de 277.16 millones de pesos. Por lo tanto, vender un apartamento de 110 a un precio de 200 millones es mala oferta oferta, ya que se esperaría que estos cuesten como máximo 349.60 millones de pesos.
+
+Tanto la estimación puntal como los intervalos de predicción al compararlos inferimos que la oferta de 200 millones de pesos por un apartamento de estrato 4 de 110 metros cuadrados es una mala oferta. Si bien la oferta es de 200 millones de pesos, para el consumidor es una excelente oferta ya que esta por debajo de lo estimado. Sin embargo, para la empresa no es tan conveniente venderlo a ese precio ya en promedio cuestan 277 millones de pesos.
+
+Cabe mencionar decir, que hasta el momento estamos viendo el punto de vista del comprador o consumidor. Por lo tanto, hay que tener otras consideraciones por el lado de la oferta (la empresa), en este caso la empresa A&C, la cual realizaría la oferta. De tal forma, determinar si vender un apartamento de 110 es una buena oferta dependerá de la competencia y del valor que le cueste a la empresa construir el inmueble. Ya que, si le cuesta más de 200 millones construirlo pues la oferta no es viable, si cuesta menos sí y dependiendo del margen de ganancia por apartamento propuesto por la empresa.
+
+Suponiendo que el valor de construcción no sobre pasa el valor de la oferta, dejar el apartamento en 200 millones es muy buena elección y esto hará más competitiva y apetecible los apartamentos de la inmobiliaria frente a las demás empresas, que  pueden estar vendiendo en promedio un apartamento con estas características (de 100 metros cuadrados) hasta en 258 millones o su precio varía entre 170 y 340 millones de pesos.
+
+
+# Validación de los supuestos.
+
+Realice la validación de los supuestos del modelo por medio de gráficos apropiados, interpretarlos y sugerir posibles soluciones si se violan algunos de ellos. Utilice las pruebas de hipótesis para la validación de supuestos y compare los resultados con lo observado en los gráficos asociados.
+
+```{r}
+par(mfrow=c(2,2))
+autoplot(modelo_RL)
+```
+
+
+Table: Interpretación de los supuestos.
+
+ **Supuesto** |  **Interpretación** | 
+----------------------| ----------------------|
+*Normalidad* | En relación con el supuesto de normalidad, en este caso se está violando dicho supuesto. Esto se debe a que los residuales (errores) no siguen una distribución normal. Lo anteriormente dicho lo podemos confirmar con el gráfico de superior derecho, se ve claramente que estos no se ajustan a lo línea diagonal, observamos que si bien hay una mayor cantidad de puntos en que siguen la línea hay una gran cantidad de puntos en la parte superior derecha e inferior izquierda que no siguen la tendencia. También al aplicar la prueba de Shapiro-Wilk y Anderson-Darling, estas nos indica que los residuales no siguen la distribución normal.
+*Homocedasticidad* | Tampoco se está cumpliendo el supuesto de homocedasticidad, al analizar el gráfico inferior izquierdo, vemos una línea tendiente hacer una diagonal. Es decir, la varianza no es constante en todas las observaciones, sino que tienden a tener una tendencia indicado que hay presencia de heterocedasticidad. Para corroborar lo dicho aplicaremos las pruebas de Breusch-Pagan y Goldfeld-Quandt (Heterocedasticidad), ambas nos dicen que no se está cumpliendo con el supuesto de homocedasticidad y que efectivamente hay presencia de heterocedasticidad, es decir, lo residuos varían bastante con respecto a los valores de la variable Y.
+*Linealidad* | Podemos observar en el grafico superior izquierdo la relación entre los valores ajustados y predichos no son lineales. Es decir, los parámetros no toman una relación muy lineal, esto lo observamos porque la línea azul no está totalmente horizontal con la línea de punto.  A medida que se van ajustando los valores la línea azul se aleja cada vez de la línea de puntos. Lo ideal sería que ambas estuvieran parablemente una encima de la otra. Por ende no se cumple el supuesto de linealidad.
+*No autocorrelación o independencia* | El supuesto de no autocorrelación no se cumple, por un lado, al aplicar la prueba de Durbin-Watson, al evaluar el p-value de la prueba, observamos que este es menor a 0.05, por lo que rechazaríamos la hipótesis nula, concluyendo que el modelo presenta autocorrelación.
+*Outliers* | Si bien este no es un supuesto, es importante tenerlo en cuenta, ya que, los datos atípicos pueden estar influyendo en la predicción de los coeficientes del modelo. Para determinar si hay valores atípicos influyentes y no recurrir al error de eliminarlos vamos se realizar el análisis de distancia de Cook.El análisis muestra varias observaciones influyentes aunque ninguna excede los límites de preocupación de la Distancia Cook (>1). Estudios más exhaustivos consistirían en rehacer el modelo sin las observaciones y ver el impacto.
+
+
+  * Prueba de normalidad en los residuales
+
+```{r}
+shapiro.test(modelo_RL$residuals)
+nortest::ad.test(modelo_RL$residuals)
+```
+
+  * Prueba de homocedasticidad.
+```{r}
+lmtest::bptest(modelo_RL)
+
+lmtest::gqtest(modelo_RL)
+```
+
+  * Prueba de no autocorrelación de errores.
+```{r}
+lmtest::dwtest(modelo_RL)
+```
+
+  * Prueba de cook para valores atípicos.
+  
+  
+```{r}
+plot(modelo_RL, 4)
+vivienda4$cook<- cooks.distance(modelo_RL)
+which(vivienda4$cook>1)
+influencePlot(modelo_RL)
+```
+  
+  
+  
+# Transformaciones del modelo.
+
+De ser necesario realice una transformación apropiada para mejorar el ajuste y supuestos del modelo.
+
+Evidentemente el modelo no es el mejor, ya que no cumple con los supuestos. Por lo tanto, se pasa a transformar el modelo para mejorar el ajuste del mismo y sus supuestos. Utilizamos la técnica Box-Cox, la cual nos ayuda a encontrar el λ óptimo, para la transformación.
+
+```{r}
+par(mfrow = c(1,2))
+boxcox(lm(vivienda4$preciom ~ vivienda4$areaconst, data=vivienda4), lambda = -3:3)
+bc<-boxcox(lm(vivienda4$preciom ~ vivienda4$areaconst), lambda = -1:1)
+
+```
+
+El resultado (λ=0) indica que la variable Y deben de estar en escala logarítmica
+```{r}
+modelo_RL_2<- lm(log(preciom)~ areaconst, data = vivienda4)
+summary(modelo_RL_2)
+```
+
+
+# Comparaciones del modelo inicial vs el transformado.
+
+De ser necesario compare el ajuste y supuestos del modelo inicial y el transformado.        
+    
+  - Modelo Transformado.
+
+```{r}
+par(mfrow=c(2,2))
+#Modelo 2
+autoplot(modelo_RL_2)
+
+```
+
+  - Modelo Inicial.
+
+```{r}
+par(mfrow=c(2,2))
+#Modelo Original
+autoplot(modelo_RL)
+```
+
+  - Análisis de los supuestos
+
+ **Supuesto** |  **Modelo 1 - Modelo Inicial** | **Modelo 2 - Modelo Transformado** |
+----------------------| ----------------------| ----------------------|
+*Linealidad * | No cumple con el suspuesto de linealidad|No cumple con el suspuesto de linealidad.
+*Normalidad* | Shapiro-Wilk p-value < 2.2e-16. Anderson-Darling normality test p-value < 2.2e-16, No cumple el supuesto de normalidad| Shapiro-Wilk p-value = 1.035e-07, Anderson-Darling normality test  p-value = 4.107e-06, No cumple el supuesto de normalidad.
+*Homocedasticidad* | studentized Breusch-Pagan test p-value < 2.2e-16, no cumple con el supuesto de homocedasticidad , Goldfeld-Quandt test (Heterocedasticidad) P=1, hay Heterocedasticidad.|studentized Breusch-Pagan p-value < 2.2e-16,  Goldfeld-Quandt test (Heterocedasticidad) P=1, no cumple con el supuesto de homocedasticidad.
+*No autocorrelación* | Durbin-Watson test p-value < 2.2e-16,no cumple con el supuesto de no autocorrelación.| Durbin-Watson test p-value < 2.2e-16, no cumple con el supuesto de no autocorrelación.
+
+
+  - **Modelo 2**
+  
+  
+   * Prueba de normalidad en los residuales
+
+```{r}
+shapiro.test(modelo_RL_2$residuals)
+nortest::ad.test(modelo_RL_2$residuals)
+```
+
+  * Prueba de homocedasticidad.
+```{r}
+lmtest::bptest(modelo_RL_2)
+
+lmtest::gqtest(modelo_RL)
+```
+
+  * Prueba de no autocorrelación de errores.
+```{r}
+lmtest::dwtest(modelo_RL_2)
+```
+
+  
+# Comparación entre varios modelos transformados.
+
+Estime varios modelos y compare los resultados obtenidos. En el mejor de los modelos, ¿se cumplen los supuestos sobre los errores?
+
+Se generan varias transformaciones a partir del modelo inicial, en este caso los modelos planteados son los siguientes:
+
+$Y = β_0 + β_1 X +e$ # Modelo Inicial.
+
+$Log(Y) = β_0 + β_1 X +e$  # Modelo propuesto por Box-Cox.
+
+$Log(Y) = β_0 + Log(β_1) X +e$ # # Modelo  Log -Log.
+
+$Y = β_0 + log(β_1) X +e$ # Modelo Lin -Log.
+
+$1/Y = β_0 + β_1 X +e$ # Modelo inverso.
+
+
+```{r}
+modelo_lineal <- lm(formula = preciom ~ areaconst, data = vivienda4) # Lin- Lin  ## Modelo_RL  Modelo Inicial
+modelo_Log_Lin <- lm(formula = log(preciom) ~ areaconst, data = vivienda4) # Log -Lin ## Modelo_RL_2 el cual fue transformado
+modelo_Lin_Log <- lm(formula = preciom ~ log10(areaconst), data = vivienda4) # Lin_log
+modelo_Log_Log <- lm(formula = log10(preciom) ~ log10(areaconst), data = vivienda4) # Log - Log 
+modelo_inverso <- lm(formula = (1/preciom) ~ areaconst, data = vivienda4) # Inverso
+```
+
+
+```{r}
+modelos<- list( modelo_lineal,
+                modelo_Log_Lin,
+                modelo_Lin_Log,
+                modelo_Log_Log,
+                modelo_inverso
+                )
+stargazer(modelos, type = "text", df = FALSE)
+```
+En la tabla anterior se enlistan los modelos generados y en la parte inferior se muestran los indicadores de ajuste, analizando el R2 de cada uno de los modelos el que mejor ajuste presenta es el modelo 3 en el que la $Precio = β_0 + log(β_1) X +e$, pues este modelo tiene una Bonda de Ajuste de 0.587. Al compara los R² el modelo con la transformación sugerida por la técnica Box-Cox (modelo 2 en la tabla) no cambia significativamente junto con el modelo 3.
+
+Ambos modelos evidentemente se ajustan un poco mejor que el modelo original de regresión lineal planteado originalmente. Sin embargo, a cada uno de estos modelos se validan los supuestos con el fin de los que coeficientes estimados por el modelo no estén sesgados o sean inexactos y no se hagan inferencias erróneas.
+
+  * Validación de suspuesto para cada modelo.
+    
+
+```{r}
+
+Modelo <- c("Lineal", "Logarítmico-Lineal", "Lineal-Logarítmico", "Logarítmico-Logarítmico", "Inverso")
+# Crear los modelos
+modelo_lineal <- lm(formula = preciom ~ areaconst, data = vivienda4)
+modelo_Log_Lin <- lm(formula = log(preciom) ~ areaconst, data = vivienda4)
+modelo_Lin_Log <- lm(formula = preciom ~ log10(areaconst), data = vivienda4)
+modelo_Log_Log <- lm(formula = log10(preciom) ~ log10(areaconst), data = vivienda4)
+modelo_inverso <- lm(formula = (1/preciom) ~ areaconst, data = vivienda4)
+
+# Pruebas
+p_shapiro <- c(shapiro.test(modelo_lineal$residuals)$p.value,
+               shapiro.test(modelo_Log_Lin$residuals)$p.value, 
+               shapiro.test(modelo_Lin_Log$residuals)$p.value,
+               shapiro.test(modelo_Log_Log$residuals)$p.value,
+               shapiro.test(modelo_inverso$residuals)$p.value)
+
+p_anderson_darling <- c(nortest::ad.test(modelo_lineal$residuals)$p.value,
+                        nortest::ad.test(modelo_Log_Lin$residuals)$p.value, 
+                        nortest::ad.test(modelo_Lin_Log$residuals)$p.value,
+                        nortest::ad.test(modelo_Log_Log$residuals)$p.value,
+                        nortest::ad.test(modelo_inverso$residuals)$p.value)
+
+p_breusch_pagan <- c(lmtest::bptest(modelo_lineal)$p.value,
+                     lmtest::bptest(modelo_Log_Lin)$p.value, 
+                     lmtest::bptest(modelo_Lin_Log)$p.value,
+                     lmtest::bptest(modelo_Log_Log)$p.value,
+                     lmtest::bptest(modelo_inverso)$p.value)
+
+p_Goldfeld_Quandt <- c(lmtest::gqtest(modelo_lineal)$p.value,
+                     lmtest::gqtest(modelo_Log_Lin)$p.value, 
+                     lmtest::gqtest(modelo_Lin_Log)$p.value,
+                     lmtest::gqtest(modelo_Log_Log)$p.value,
+                     lmtest::gqtest(modelo_inverso)$p.value)
+  
+p_Durbin_Watson <- c(lmtest::dwtest(modelo_lineal)$p.value,
+                     lmtest::dwtest(modelo_Log_Lin)$p.value, 
+                     lmtest::dwtest(modelo_Lin_Log)$p.value,
+                     lmtest::dwtest(modelo_Log_Log)$p.value,
+                     lmtest::dwtest(modelo_inverso)$p.value)
+
+resultados_df <- data.frame(Modelo, 
+                            "Prueba Shapiro" = p_shapiro,
+                            "Prueba Anderson-Darling" = p_anderson_darling,
+                            "Prueba Breusch-Pagan" = p_breusch_pagan,
+                            "Prueba Goldfeld Quandt" = p_Goldfeld_Quandt,
+                            "Prueba Durbin Watson"=p_Durbin_Watson)
+
+colnames(resultados_df) <- c("Modelo", "Prueba Shapiro", "Prueba Anderson-Darling", "Prueba Breusch-Pagan","Prueba Goldfeld Quandt","Prueba Durbin Watson")
+
+tabla_formato <- resultados_df %>%
+  kable("html") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  add_header_above(c("Validación de los supuestos para cada modelo según prueba" = 6), 
+                   bold = TRUE, align = "center") %>%
+  column_spec(1, bold = TRUE) 
+
+tabla_formato
+```
+   
+Analizando los supuestos de cada uno de los modelos planteados llegamos a la conclusión que todos los modelos no cumplen o invalidan los supuestos, pues en todas las pruebas la $H_0$ se rechaza, mostrando que los modelos tienen problemas de normalidad, linealidad, homocedasticidad y autocorrelación.
+
+Dicho lo anterior, ningún modelo es fiable para realizar una predicción de los precios de los apartamentos, ya que no se pueden confiar en sus predicciones e interpretaciones. Una posible solución es la eliminación de los outliers, si bien vimos con el análisis Cook que no hay datos atípicos que estén influyendo significativamente en la predicción del modelo sería interesante realizar la eliminación de estos y mirar el comportamiento del modelo. 
+
+Si bien se utilizó la transformación que sugirió la técnica Box-Cox, al aplicar el logaritmo en el modelo, el modelo mejora, pero no es suficiente, pues este sigue teniendo diversos problemas de normaldiad, autocorrelación y heterocedasticidad. 
+
+A continuación se muestran cada una de las gráficas por modelo según supuesto:
+
+   - **Gráfico para Diagnóstico de Linealidad**
+
+```{r}
+par(mfrow=c(3,2))
+title(plot(modelo_lineal, which = 1), main = "Modelo Lineal - Inicial")
+title(plot(modelo_Log_Log, which = 1), main = "Modelo Log - Log - Box - COx")
+title(plot(modelo_Log_Lin, which = 1), main = "Modelo Log - Lin")
+title(plot(modelo_Lin_Log, which = 1), main = "Modelo Lin - Log")
+title(plot(modelo_inverso, which = 1), main = "Modelo Inverso")
+```
+  
+   - **Gráficos para Diagnóstico de Normalidad**   
+
+```{r}
+par(mfrow=c(3,2))
+title(plot(modelo_lineal, which = 2), main = "Modelo Lineal - Inicial")
+title(plot(modelo_Log_Log, which = 2), main = "Modelo Log - Log - Box - COx")
+title(plot(modelo_Log_Lin, which = 2), main = "Modelo Log - Lin")
+title(plot(modelo_Lin_Log, which = 2), main = "Modelo Lin - Log")
+title(plot(modelo_inverso, which = 2), main = "Modelo Inverso")
+```
+
+  - **Diagnóstico de homocedasticidad**
+
+```{r}
+par(mfrow=c(3,2))
+title(plot(modelo_lineal, which = 3), main = "Modelo Lineal - Inicial")
+title(plot(modelo_Log_Log, which = 3), main = "Modelo Log - Log - Box - COx")
+title(plot(modelo_Log_Lin, which = 3), main = "Modelo Log - Lin")
+title(plot(modelo_Lin_Log, which = 3), main = "Modelo Lin - Log")
+title(plot(modelo_inverso, which = 3), main = "Modelo Inverso")
+```
+
+  - **Diagnóstico de Valores Atípicos**
+
+```{r}
+par(mfrow=c(3,2))
+title(plot(modelo_lineal, which = 5), main = "Modelo Lineal - Inicial")
+title(plot(modelo_Log_Log, which = 5), main = "Modelo Log - Log - Box - COx")
+title(plot(modelo_Log_Lin, which = 5), main = "Modelo Log - Lin")
+title(plot(modelo_Lin_Log, which = 5), main = "Modelo Lin - Log")
+title(plot(modelo_inverso, which = 5), main = "Modelo Inverso")
+```
+
+
+  - **Diagnóstico Autocorrelación**
+```{r}
+Residuos_M_Lienal <- residuals(modelo_lineal)
+Residuos_M_Log_Log <- residuals(modelo_Log_Log)
+Residuos_M_Log_Lin <- residuals(modelo_Log_Lin)
+Residuos_M_Lin_Log <- residuals(modelo_Lin_Log)
+Residuos_M_inverso <- residuals(modelo_inverso)
+
+
+acf(Residuos_M_Lienal, lag.max = 25, main = "Modelo Lineal - Inicial")  
+acf(Residuos_M_Log_Log, lag.max = 25, main = "Modelo Log - Log - Box - COx")  
+acf(Residuos_M_Log_Lin, lag.max = 25, main = "Modelo Log - Lin")  
+acf(Residuos_M_Lin_Log, lag.max = 25, main = "Modelo Lin - Log")  
+acf(Residuos_M_inverso, lag.max = 25, main = "Modelo Inverso")  
+```
+
+Basándonos en los gráficos ACF, podemos concluir que en todos los modelos hay indicios de autocorrelación. Es decir, los residuos están asociados entre sí, lo que se puede ver en la forma en que se agrupan. Además, podemos ver que gran parte de las barrar están por fuera de las bandas de confianza indicándonos que hay autocorrelación positiva de los residuos.
+
+
+
+# Informe inmobiliaria A&C.
+
+## **Introducción.**
+
+En este informe, se presenta el desarrollo de un modelo de regresión lineal para predecir el precio de los apartamentos de estrato 4 en Cali. En el cual primeramente se hace el análisis exploratorio de las variables a utilizar (Precio y Área Construida) y luego se procede a realizar la aplicación de varios modelos de regresión lineal simple con el fin de determinar cual es el más apropiado según sus características para la predicción sobre los precios de los inmuebles.
+
+## **Objetivos.**
+  
+  - OBJETIVO GENERAL.
+  
+       - Construcción de un modelo de regresión lineal para predecir el precio de los apartamentos de estrato 4.
+
+  - OBJETIVOS ESPECÍFICOS:
+  
+      - Realizar  análisis exploratorio de las variables precio y área construida.
+      
+      - Desarrollar análisis bivariado entre las variables precio y área construida.
+      
+      - Estimar diversos modelos y validar sus supuestos.
+
+
+## **Desarrollo.**
+
+Con se pudo observar en el primer apartado del análisis exploratorio de los apartamentos de estrato 4 con áreas menores o iguales a 200 m², de las cuales se están ofertando 1367 apartamentos. El precio promedio de las viviendas es de 202.43 millones de peso, también se observa que hay muchos apartamentos con precios bajos alrededor del promedio pues el 50% de las viviendas tienen un precio igual o menor a 185 millones de pesos. Por otro lado, vemos que hay vivienda con precios muy altos, pues algunas alcanzan precio de más de 600 millones de pesos, pues el precio máximo de un apartamento está en 645 millones de pesos.
+
+Por el lado del área construida, hay concentración de oferta de apartamentos con m² menores a 84 m², pues el 50% de los apartamentos tienen un área construida menor o igual a 70 m², sin embargo, hay presencia de apartamentos con áreas construida de más 160 m² lo cuales son apartamentos demasiado grandes con respecto al promedio.
+
+Al realizar el análisis conjunto de las dos variables estudiadas se encuentra que existe, aunque no es perfecta la asociación lineal entre el precio y el área construida que a medida que aumenta el área construida el precio de los apartamentos también tiende a aumentar; no obstante, hay apartamentos con áreas construidas muy grandes y con precios bajos e inversamente apartamentos con precios altos y con área de construcción pequeñas.
+
+
+- **IMPLEMENTACIÓN DE MODELOS.**
+
+
+Se realizó la implementación de 5 modelos de regresión lineal simple logrando hacer transformaciones en busca de un mejor modelo predictivo. De acuerdo con lo anterior, se implementaron los siguientes modelos.
+
+  - Modelo Lin – Lin.
+
+  - Modelo Log – Log.
+  
+  - Modelo Log – Lin.
+
+  - Modelo Lin – Log.
+
+  - Modelo Inverso.
+
+Donde, el modelo Log – Lin es implementado gracias a la sugerencia de la técnica Box – Cox. Dentro de los 5 modelos mencionados anteriormente hay dos modelos que tiene mejor ajuste que los demás, el modelo Log- Log con un R² de 0.582 y el modelo Lin – Log con un R² de 0.587, es decir que ambos casos la variable área construida explica el 58% de precio de los apartamentos de estrato 4. Por otro lado, al validar los supuestos de Linealidad, Normalidad, Homocedasticidad y No autocorrelación ningún modelo cumple con los supuestos.
+
+Lo anterior se puede estar presentando por la pequeña muestra de datos que hay, estos no pueden ser representativos. También, la relación entre la variable dependiente y la variable explicativa no son lineales, lo que puede afectar la linealidad del modelo.
+
+Los valores atípicos que hay en la muestra no están influyendo en el modelo, ya que por medio del análisis de Distancia Cook vimos que estos no eran influyentes. Además, aunque no se evidencia dentro de este informe, se realizó la eliminación de dichos valores atípicos, y se implementó nuevamente el modelo con la transformación adecuada y aun así el modelo no mejoró en su predicción (R² = 0.5823), asimismo, igual que en los otros modelos éste no cumplió con los supuestos.
+
+  
+## **Recomendaciones**
+
+  - Se recomendaría que para una mejor predicción del modelo ampliar la cantidad de observaciones, es decir, ampliar la muestra.
+
+  - También se puede incluir nuevas variables en el modelo. Esto puede ayudar a mejorar la precisión del modelo si las nuevas variables están correlacionadas con la variable dependiente. Ejemplo: Número de habitaciones de los apartamentos, ubicación, número de baños, características de los edificios donde están ubicados los apartamentos, características del vecindario donde está ubicado.
+
+  - Finalmente, se puede utilizar un modelo de regresión lineal más complejo. Esto puede ayudar a mejorar la precisión del modelo si la relación entre la variable dependiente y la variable explicativa no es lineal. Ejemplo: Modelo no lineal, Modelo cuadrático, modelo exponencial.
+  
+  
+## **Conclusiones**
+
+En conclusión, a pesar de implementar varias transformaciones al modelo de Regresión Lineal Simple las cuales tienen como fin mejorar la validación de los supuestos, ningún modelo mejora en sus supuestos (Linealidad, Normalidad, homocedasticidad y no autocorrelación), de lo cual inferimos que ningún modelo es confiable para tomar decisiones sobre los precios de los inmuebles.
+
+Si bien los R² de los modelos son altos en relación con las características mismas del modelo (sólo hay una variable explicativa) el modelo tiene un ajuste bastante bueno, pero al no garantizarse los supuestos podemos indicar que el modelo no es  preciso y poco válido.
+:::
